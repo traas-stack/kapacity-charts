@@ -1,0 +1,119 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "kapacity-manager.fullname" . }}
+  labels:
+    {{- include "kapacity-manager.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "kapacity-manager.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "kapacity-manager.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "kapacity-manager.serviceAccountName" . }}
+      {{- with .Values.podSecurityContext }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      {{- end }}
+      containers:
+      - name: manager
+        command:
+        - /manager
+        args:
+        - --log-path={{ .Values.logPath }}
+        - --log-file-max-age={{ .Values.logFileMaxAge }}
+        - --log-file-rotation-time={{ .Values.logFileRotationTime }}
+        - --zap-stacktrace-level={{ .Values.zap.stacktraceLevel }}
+        - --zap-log-level={{ .Values.zap.logLevel }}
+        - --health-probe-bind-address=:8081
+        - --metrics-bind-address=:8080
+        - --leader-elect
+        - --reconcile-concurrency={{ .Values.reconcileConcurrency }}
+        - --metric-provider={{ .Values.metricsProvider }}
+        {{- if eq .Values.metricsProvider "prometheus" }}
+        - --prometheus-address={{ .Values.prometheus.address }}
+        {{- end }}
+        env:
+        - name: TZ
+          value: {{ .Values.timezone }}
+        {{- with .Values.securityContext }}
+        securityContext:
+          {{- toYaml .Values.securityContext | nindent 12 }}
+        {{- end }}
+        image: "{{ .Values.image.registry }}/{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        {{- if .Values.webhook.enabled }}
+        ports:
+        - containerPort: 9443
+          name: webhook-server
+          protocol: TCP
+        {{- end }}
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 8081
+          initialDelaySeconds: 15
+          periodSeconds: 20
+        readinessProbe:
+          httpGet:
+            path: /readyz
+            port: 8081
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        resources:
+          {{- toYaml .Values.resources | nindent 12 }}
+        {{- if or .Values.logPath .Values.webhook.enabled }}
+        volumeMounts:
+        {{- if .Values.logPath }}
+        - name: log
+          mountPath: {{ .Values.logPath }}
+        {{- end }}
+        {{- if .Values.webhook.enabled }}
+        - name: webhook-cert
+          mountPath: /tmp/k8s-webhook-server/serving-certs
+          readOnly: true
+        {{- end }}
+        {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchLabels:
+                {{- include "kapacity-manager.selectorLabels" . | nindent 16 }}
+            topologyKey: kubernetes.io/hostname
+      {{- with .Values.affinity }}
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- if or .Values.logPath .Values.webhook.enabled }}
+      volumes:
+      {{- if .Values.logPath }}
+      - name: log
+        emptyDir: {}
+      {{- end }}
+      {{- if .Values.webhook.enabled }}
+      - name: webhook-cert
+        secret:
+          defaultMode: 420
+          secretName: webhook-server-cert
+      {{- end }}
+      {{- end }}
