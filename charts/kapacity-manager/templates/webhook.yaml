@@ -1,0 +1,79 @@
+{{- if .Values.webhook.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: kapacity-webhook-service
+  labels:
+    {{- include "kapacity-manager.labels" . | nindent 4 }}
+spec:
+  ports:
+  - port: 443
+    protocol: TCP
+    targetPort: 9443
+  selector:
+    {{- include "kapacity-manager.selectorLabels" . | nindent 4 }}
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: MutatingWebhookConfiguration
+metadata:
+  annotations:
+    cert-manager.io/inject-ca-from: {{ .Release.Namespace }}/kapacity-serving-cert
+  labels:
+    {{- include "kapacity-manager.labels" . | nindent 4 }}
+  name: kapacity-mutating-webhook-configuration
+webhooks:
+- admissionReviewVersions:
+  - v1
+  - v1beta1
+  clientConfig:
+    service:
+      name: kapacity-webhook-service
+      namespace: {{ .Release.Namespace }}
+      path: /mutate-v1-pod
+  failurePolicy: Fail
+  name: mpod.kb.io
+  namespaceSelector:
+    matchExpressions:
+    - key: kubernetes.io/metadata.name
+      operator: NotIn
+      values:
+      - {{ .Release.Namespace }}
+  rules:
+  - apiGroups:
+    - ""
+    apiVersions:
+    - v1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - pods
+    - pods/status
+  sideEffects: None
+---
+{{- if .Values.webhook.useCertManager }}
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  labels:
+    {{- include "kapacity-manager.labels" . | nindent 4 }}
+  name: kapacity-serving-cert
+spec:
+  dnsNames:
+  - kapacity-webhook-service.{{ .Release.Namespace }}.svc
+  - kapacity-webhook-service.{{ .Release.Namespace }}.svc.cluster.local
+  issuerRef:
+    kind: Issuer
+    name: kapacity-selfsigned-issuer
+  secretName: webhook-server-cert
+---
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  labels:
+    {{- include "kapacity-manager.labels" . | nindent 4 }}
+  name: kapacity-selfsigned-issuer
+spec:
+  selfSigned: {}
+{{- end }}
+{{- end }}

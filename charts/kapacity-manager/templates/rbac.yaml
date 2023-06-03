@@ -1,0 +1,225 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: kapacity:manager:leader-election
+  labels:
+    {{- include "kapacity-manager.labels" . | nindent 4 }}
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - configmaps
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - coordination.k8s.io
+  resources:
+  - leases
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - ""
+  resources:
+  - events
+  verbs:
+  - create
+  - patch
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: kapacity:manager
+  labels:
+    {{- include "kapacity-manager.labels" . | nindent 4 }}
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - events
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - pods
+  verbs:
+  - get
+  - list
+  - patch
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - pods/status
+  verbs:
+  - get
+  - patch
+- apiGroups:
+  - '*'
+  resources:
+  - '*/scale'
+  verbs:
+  - get
+  - update
+- apiGroups:
+  - apps.cafe.cloud.alipay.com
+  resources:
+  - operationjobs
+  verbs:
+  - create
+  - get
+  - list
+  - watch
+- apiGroups:
+  - autoscaling.kapacitystack.io
+  resources:
+  - horizontalportraits
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - autoscaling.kapacitystack.io
+  resources:
+  - horizontalportraits/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - autoscaling.kapacitystack.io
+  resources:
+  - horizontalportraits/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - autoscaling.kapacitystack.io
+  resources:
+  - intelligenthorizontalpodautoscalers
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - autoscaling.kapacitystack.io
+  resources:
+  - intelligenthorizontalpodautoscalers/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - autoscaling.kapacitystack.io
+  resources:
+  - intelligenthorizontalpodautoscalers/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - autoscaling.kapacitystack.io
+  resources:
+  - replicaprofiles
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - autoscaling.kapacitystack.io
+  resources:
+  - replicaprofiles/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - autoscaling.kapacitystack.io
+  resources:
+  - replicaprofiles/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - custom.metrics.k8s.io
+  resources:
+  - '*'
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - external.metrics.k8s.io
+  resources:
+  - '*'
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - metrics.k8s.io
+  resources:
+  - '*'
+  verbs:
+  - get
+  - list
+  - watch
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: kapacity:manager:leader-election
+  labels:
+    {{- include "kapacity-manager.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: kapacity:manager:leader-election
+subjects:
+- kind: ServiceAccount
+  name: {{ include "kapacity-manager.serviceAccountName" . }}
+  namespace: {{ .Release.Namespace }}
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: kapacity:manager
+  labels:
+    {{- include "kapacity-manager.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: kapacity:manager
+subjects:
+- kind: ServiceAccount
+  name: {{ include "kapacity-manager.serviceAccountName" . }}
+  namespace: {{ .Release.Namespace }}
