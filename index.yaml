@@ -2,6 +2,16 @@ apiVersion: v1
 entries:
   kapacity-manager:
   - apiVersion: v2
+    appVersion: v0.2.0
+    created: "2023-10-26T03:19:36.244494765Z"
+    description: Helm chart for Kapacity manager
+    digest: 40f4011dbe3a22a34f19e37158a5cb7368da0c5d5e6a38aa5ce88676172c72ff
+    name: kapacity-manager
+    type: application
+    urls:
+    - https://github.com/traas-stack/kapacity-charts/releases/download/kapacity-manager-0.2.0/kapacity-manager-0.2.0.tgz
+    version: 0.2.0
+  - apiVersion: v2
     appVersion: v0.1.0
     created: "2023-06-03T15:02:27.810054608Z"
     description: Helm chart for Kapacity manager
@@ -11,4 +21,4 @@ entries:
     urls:
     - https://github.com/traas-stack/kapacity-charts/releases/download/kapacity-manager-0.1.0/kapacity-manager-0.1.0.tgz
     version: 0.1.0
-generated: "2023-06-03T15:02:27.810066408Z"
+generated: "2023-10-26T03:19:36.244506665Z"
