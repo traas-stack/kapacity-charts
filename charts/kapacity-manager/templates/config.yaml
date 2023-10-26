@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kapacity-config
+  labels:
+    {{- include "kapacity-manager.labels" . | nindent 4 }}
+data:
+  prometheus-metrics-config.yaml: |
+{{ toYaml .Values.prometheus.metrics.config | indent 4 }}

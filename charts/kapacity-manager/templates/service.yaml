@@ -1,0 +1,15 @@
+{{- if .Values.grpcServer.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: kapacity-grpc-service
+  labels:
+    {{- include "kapacity-manager.labels" . | nindent 4 }}
+spec:
+  ports:
+  - port: {{ .Values.grpcServer.bindPort }}
+    protocol: TCP
+    targetPort: {{ .Values.grpcServer.bindPort }}
+  selector:
+    {{- include "kapacity-manager.selectorLabels" . | nindent 4 }}
+{{- end }}
