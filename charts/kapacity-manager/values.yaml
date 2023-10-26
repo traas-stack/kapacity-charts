@@ -12,14 +12,101 @@ image:
   tag: ""
 
 reconcileConcurrency: 16
-metricsProvider: prometheus
+objectSelector:
+  label: ""
+  field: ""
+
+grpcServer:
+  enabled: true
+  bindAddress: ""
+  bindPort: 9090
+
+metricProvider: prometheus
 # Setup Promethues provider configs.
 prometheus:
   address: ""
+  auth:
+    incluster: false
+    config: ""
+  metrics:
+    relistInterval: 10m
+    maxAge: ""
+    config:
+      resourceRules:
+        cpu:
+          containerQuery: |-
+            sum by (<<.GroupBy>>) (
+              irate(container_cpu_usage_seconds_total{container!="",container!="POD",<<.LabelMatchers>>}[3m])
+            )
+          readyPodsOnlyContainerQuery: |-
+            sum by (<<.GroupBy>>) (
+                (kube_pod_status_ready{condition="true"} == 1)
+              * on (namespace, pod) group_left ()
+                sum by (namespace, pod) (
+                  irate(container_cpu_usage_seconds_total{container!="",container!="POD",<<.LabelMatchers>>}[3m])
+                )
+            )
+          resources:
+            overrides:
+              namespace:
+                resource: namespace
+              pod:
+                resource: pod
+          containerLabel: container
+        memory:
+          containerQuery: |-
+            sum by (<<.GroupBy>>) (
+              container_memory_working_set_bytes{container!="",container!="POD",<<.LabelMatchers>>}
+            )
+          readyPodsOnlyContainerQuery: |-
+            sum by (<<.GroupBy>>) (
+                (kube_pod_status_ready{condition="true"} == 1)
+              * on (namespace, pod) group_left ()
+                sum by (namespace, pod) (
+                  container_memory_working_set_bytes{container!="",container!="POD",<<.LabelMatchers>>}
+                )
+            )
+          resources:
+            overrides:
+              namespace:
+                resource: namespace
+              pod:
+                resource: pod
+          containerLabel: container
+        window: 3m
+      rules: []
+      externalRules:
+      - seriesQuery: '{__name__="kube_pod_status_ready"}'
+        metricsQuery: sum(<<.Series>>{condition="true",<<.LabelMatchers>>})
+        name:
+          as: ready_pods_count
+        resources:
+          overrides:
+            namespace:
+              resource: namespace
+      workloadPodNamePatterns:
+      - group: apps
+        kind: ReplicaSet
+        pattern: ^%s-[a-z0-9]+$
+      - group: apps
+        kind: Deployment
+        pattern: ^%s-[a-z0-9]+-[a-z0-9]+$
+      - group: apps
+        kind: StatefulSet
+        pattern: ^%s-[0-9]+$
 
 webhook:
   enabled: true
   useCertManager: true
+
+algorithmJob:
+  defaultServiceAccount: kapacity-algorithm-job
+  defaultMetricsServerAddr: kapacity-grpc-service:9090
+  defaultImage:
+    horizontalPredictive:
+      registry: ghcr.io
+      repository: traas-stack/kapacity-algorithm-horizontal-predictive
+      tag: v0.1.0
 
 # Set a path to enable logging to disk.
 logPath: ""

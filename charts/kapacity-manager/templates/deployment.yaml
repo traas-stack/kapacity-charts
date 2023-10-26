@@ -37,13 +37,34 @@ spec:
         - --log-file-rotation-time={{ .Values.logFileRotationTime }}
         - --zap-stacktrace-level={{ .Values.zap.stacktraceLevel }}
         - --zap-log-level={{ .Values.zap.logLevel }}
-        - --health-probe-bind-address=:8081
         - --metrics-bind-address=:8080
+        - --health-probe-bind-address=:8081
         - --leader-elect
         - --reconcile-concurrency={{ .Values.reconcileConcurrency }}
-        - --metric-provider={{ .Values.metricsProvider }}
-        {{- if eq .Values.metricsProvider "prometheus" }}
-        - --prometheus-address={{ .Values.prometheus.address }}
+        - --object-label-selector={{ .Values.objectSelector.label }}
+        - --object-field-selector={{ .Values.objectSelector.field }}
+        - --serve-admission-webhooks={{ .Values.webhook.enabled }}
+        - --grpc-server-bind-address={{ .Values.grpcServer.enabled | ternary (print .Values.grpcServer.bindAddress ":" .Values.grpcServer.bindPort) "0" }}
+        - --metric-provider={{ .Values.metricProvider }}
+        {{- if eq .Values.metricProvider "prometheus" }}
+        {{- with .Values.prometheus }}
+        - --prometheus-address={{ .address }}
+        - --prometheus-auth-incluster={{ .auth.incluster }}
+        - --prometheus-auth-config={{ .auth.config }}
+        - --prometheus-metrics-config=/etc/kapacity/prometheus-metrics-config.yaml
+        - --prometheus-metrics-relist-interval={{ .metrics.relistInterval }}
+        {{- if .metrics.maxAge }}
+        - --prometheus-metrics-max-age={{ .metrics.maxAge }}
+        {{- end }}
+        {{- end }}
+        {{- end }}
+        - --algorithm-job-namespace={{ .Release.Namespace }}
+        {{- with .Values.algorithmJob }}
+        - --algorithm-job-default-service-account={{ .defaultServiceAccount }}
+        - --algorithm-job-default-metrics-server-addr={{ .defaultMetricsServerAddr }}
+        {{- with .defaultImage.horizontalPredictive }}
+        - --algorithm-job-default-image-horizontal-predictive={{ .registry }}/{{ .repository }}:{{ .tag }}
+        {{- end }}
         {{- end }}
         env:
         - name: TZ
@@ -54,10 +75,15 @@ spec:
         {{- end }}
         image: "{{ .Values.image.registry }}/{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
         imagePullPolicy: {{ .Values.image.pullPolicy }}
-        {{- if .Values.webhook.enabled }}
         ports:
+        {{- if .Values.webhook.enabled }}
         - containerPort: 9443
           name: webhook-server
+          protocol: TCP
+        {{- end }}
+        {{- if .Values.grpcServer.enabled }}
+        - containerPort: {{ .Values.grpcServer.bindPort }}
+          name: grpc-server
           protocol: TCP
         {{- end }}
         livenessProbe:
@@ -74,8 +100,10 @@ spec:
           periodSeconds: 10
         resources:
           {{- toYaml .Values.resources | nindent 12 }}
-        {{- if or .Values.logPath .Values.webhook.enabled }}
         volumeMounts:
+        - name: config
+          mountPath: /etc/kapacity
+          readOnly: true
         {{- if .Values.logPath }}
         - name: log
           mountPath: {{ .Values.logPath }}
@@ -84,7 +112,6 @@ spec:
         - name: webhook-cert
           mountPath: /tmp/k8s-webhook-server/serving-certs
           readOnly: true
-        {{- end }}
         {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
@@ -104,8 +131,10 @@ spec:
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- if or .Values.logPath .Values.webhook.enabled }}
       volumes:
+      - name: config
+        configMap:
+          name: kapacity-config
       {{- if .Values.logPath }}
       - name: log
         emptyDir: {}
@@ -115,5 +144,4 @@ spec:
         secret:
           defaultMode: 420
           secretName: webhook-server-cert
-      {{- end }}
       {{- end }}
