@@ -6,11 +6,15 @@ replicaCount: 1
 
 image:
   registry: ghcr.io
-  repository: traas-stack/kapacity-manager
+  repository:
+    namespace: traas-stack
+    name: kapacity-manager
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
   tag: ""
 
+kubeAPIQPS: 100
+kubeAPIBurst: 200
 reconcileConcurrency: 16
 objectSelector:
   label: ""
@@ -79,7 +83,7 @@ prometheus:
       - seriesQuery: '{__name__="kube_pod_status_ready"}'
         metricsQuery: sum(<<.Series>>{condition="true",<<.LabelMatchers>>})
         name:
-          as: ready_pods_count
+          as: kube_pod_status_ready
         resources:
           overrides:
             namespace:
@@ -106,7 +110,7 @@ algorithmJob:
     horizontalPredictive:
       registry: ghcr.io
       repository: traas-stack/kapacity-algorithm-horizontal-predictive
-      tag: v0.1.0
+      tag: v0.2.0
 
 # Set a path to enable logging to disk.
 logPath: ""

@@ -40,6 +40,8 @@ spec:
         - --metrics-bind-address=:8080
         - --health-probe-bind-address=:8081
         - --leader-elect
+        - --kube-api-qps={{ .Values.kubeAPIQPS }}
+        - --kube-api-burst={{ .Values.kubeAPIBurst }}
         - --reconcile-concurrency={{ .Values.reconcileConcurrency }}
         - --object-label-selector={{ .Values.objectSelector.label }}
         - --object-field-selector={{ .Values.objectSelector.field }}
@@ -73,7 +75,7 @@ spec:
         securityContext:
           {{- toYaml .Values.securityContext | nindent 12 }}
         {{- end }}
-        image: "{{ .Values.image.registry }}/{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+        image: "{{ .Values.image.registry }}/{{ .Values.image.repository.namespace }}/{{ .Values.image.repository.name }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
         imagePullPolicy: {{ .Values.image.pullPolicy }}
         ports:
         {{- if .Values.webhook.enabled }}
