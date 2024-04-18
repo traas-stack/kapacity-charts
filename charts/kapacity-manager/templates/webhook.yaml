@@ -37,7 +37,10 @@ webhooks:
     - key: kubernetes.io/metadata.name
       operator: NotIn
       values:
+      - kube-system
+      {{- if ne .Release.Namespace "kube-system" }}
       - {{ .Release.Namespace }}
+      {{- end }}
   rules:
   - apiGroups:
     - ""
