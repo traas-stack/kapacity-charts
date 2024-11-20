@@ -110,7 +110,7 @@ algorithmJob:
     horizontalPredictive:
       registry: ghcr.io
       repository: traas-stack/kapacity-algorithm-horizontal-predictive
-      tag: v0.2.0
+      tag: v0.3.0
 
 # Set a path to enable logging to disk.
 logPath: ""
